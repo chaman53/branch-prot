@@ -1,0 +1,22 @@
+name: Enforce XML Folder Rules
+
+on:
+  push:
+    paths:
+      - 'path/to/your/xml/folder/**' # Replace with the actual folder path
+
+jobs:
+  enforce-rules:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for XML files
+        run: |
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^path/to/your/xml/folder/.*\.xml$' || exit 0
+        shell: bash
+
+      - name: Prevent XML Changes
+        run: |
+          echo "You cannot add or delete XML files in this folder."
+          exit 1
+        shell: bash
