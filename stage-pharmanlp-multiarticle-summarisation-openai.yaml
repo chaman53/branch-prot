@@ -1,0 +1,117 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pharmanlp-multiarticle-summarisation-openai
+spec:
+  selector:
+    matchLabels:
+      name: pharmanlp-multiarticle-summarisation-openai
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pharmanlp-multiarticle-summarisation-openai
+    spec:
+      containers:
+        - name: pharmanlp-multiarticle-summarisation-openai
+          image: 384818357873.dkr.ecr.us-west-1.amazonaws.com/pnlp-stage-ml-multiarticle-summarisation-openai:latest
+          command: ["sh", "-c", "gunicorn app.main:app --workers 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8081"]
+          #command: ["sh", "-c", "echo $GROBID_SERVER_END_POINT && sleep 5000"]
+          env:
+            - name: Access_key
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AWS_ACCESS_KEY
+            - name: Secret_key
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AWS_SECRET_KEY
+            - name: Region
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AWS_REGION_NAME
+            - name: ES_Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_ELASTICSEARCH_END_POINT
+            - name: ES_Username
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_ELASTICSEARCH_USER_NAME
+            - name: ES_Password
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_ELASTICSEARCH_PASSWORD
+            - name: Multiarticle_openai_azure_engine
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AZURE_OPENAI_ENGINE_GPT4
+            - name: Multiarticle_openai_azure_api_type
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AZURE_OPENAI_API_TYPE_GPT4
+            - name: Multiarticle_openai_azure_api_base
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AZURE_OPENAI_API_BASE_GPT4
+            - name: Multiarticle_openai_azure_api_version
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AZURE_OPENAI_API_VERSION_GPT4
+            - name:  Multiarticle_openai_azure_api_key
+              valueFrom:
+                secretKeyRef:
+                  name: pnlp-stage-credentials-confidential
+                  key: stage_AZURE_OPENAI_API_KEY_GPT4
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              #readinessProbe:
+              #tcpSocket:
+              #port: 7000
+              #initialDelaySeconds: 5
+              #periodSeconds: 10
+              #livenessProbe:
+              #tcpSocket:
+              #port: 7000
+              #initialDelaySeconds: 15
+              #periodSeconds: 20
+          # resources:
+          #   limits:
+          #     cpu: 15000m
+          #     memory: 118784Mi
+          #   requests:
+          #     cpu: 15000m
+          #     memory: 118784Mi
+          volumeMounts:
+          - name: efs-pvc
+            mountPath: /efs
+      initContainers:
+        - name: volume-prewarming
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:0 /efs"]
+          volumeMounts:
+          - name: efs-pvc
+            mountPath: /efs
+      volumes:
+        - name: efs-pvc
+          persistentVolumeClaim:
+            claimName: efs-storage-claim
+      #tolerations:
+      # - key: "dedicated"
+      #   operator: "Equal"
+      #   value: "extraction"
+      #   effect: "NoSchedule"
+      # nodeSelector:
+      #   kube/nodetype: extraction
